@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter: Run Android App",
+      "type": "shell",
+      "command": "flutter run",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Run the Flutter app on an Android device or emulator."
+    }
+  ]
+}
