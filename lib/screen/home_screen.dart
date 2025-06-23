@@ -1,8 +1,12 @@
 // Example: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:wanderly_android/screen/Maps.dart';
+import 'package:wanderly_android/screen/food_spots_screen.dart';
+import 'package:wanderly_android/screen/landmarks_screen.dart';
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final Color bgColor = Color(0xFF18222D);
@@ -117,8 +121,18 @@ class HomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan),
-                  _categoryIcon(Icons.restaurant, 'Food', Colors.orange),
+                  _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan, onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LandmarksScreen()),
+                    );
+                  }),
+                  _categoryIcon(Icons.restaurant, 'Food', Colors.orange, onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FoodSpotsScreen()),
+                    );
+                  }),
                   _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
                   _categoryIcon(Icons.event, 'Events', Colors.indigo),
                   _viewMapButton(),
@@ -213,13 +227,15 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _categoryIcon(IconData icon, String label, Color color) {
-    return Column(
+  static Widget _categoryIcon(IconData icon, String label, Color color, {VoidCallback? onTap}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Column(
       children: [
         CircleAvatar(
           backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color, size: 28),
           radius: 28,
+          child: Icon(icon, color: color, size: 28),
         ),
         SizedBox(height: 6),
         Text(
@@ -227,8 +243,9 @@ class HomeScreen extends StatelessWidget {
           style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   Widget _viewMapButton() {
     return Column(

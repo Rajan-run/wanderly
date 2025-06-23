@@ -61,6 +61,14 @@ flutter:
     # - assets/tokyo.jpg
     # - assets/sydney.jpg
     # - assets/hidden_beach.jpg
+    # - assets/artisan_table.jpg
+    # - assets/savory_bites.jpg
+    # - assets/green_garden.jpg
+    # - assets/coastal_grill.jpg
+    # - assets/golden_gate.jpg
+    # - assets/tokyo_tower.jpg
+    # - assets/sydney_opera.jpg
+    # - assets/statue_of_liberty.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:
