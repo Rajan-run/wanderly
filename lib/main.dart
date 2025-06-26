@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screen/splash_screen.dart';
 import 'screen/home_screen.dart';
 
 void main() {
@@ -11,10 +12,12 @@ class WanderlyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wanderly',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
-      home: HomeScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }
