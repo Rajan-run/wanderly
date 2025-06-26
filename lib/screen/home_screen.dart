@@ -1,5 +1,6 @@
-// Example: lib/screens/home_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:wanderly_android/screen/Maps.dart';
 import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
@@ -18,25 +19,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Request location permission when the app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestLocationPermission();
     });
   }
-  
+
   Future<void> _requestLocationPermission() async {
     setState(() {
       _isLoadingLocation = true;
     });
-    
-    // Import location service at the top of the file
+
     final locationService = LocationService();
     final position = await locationService.getCurrentLocation(context);
-    
+
     setState(() {
       _isLoadingLocation = false;
     });
-    
+
     if (position != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -122,27 +121,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _placeCard(
-                          image: 'assets/sf.jpg',
-                          city: 'San Francisco',
-                          distance: '0.5 mi',
-                          rating: '4.4.8',
-                          color: Colors.orange,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: PlaceCard(
+                            city: 'Hawa Mahal',
+                            distance: '1.0 mi',
+                            rating: '4.8',
+                            color: Colors.orange,
+                          ),
                         ),
-                        SizedBox(width: 16),
-                        _placeCard(
-                          image: 'assets/tokyo.jpg',
-                          city: 'Tokyo',
-                          distance: '1.2 mi',
-                          rating: '4.7',
-                          color: Colors.pink,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: PlaceCard(
+                            city: 'Amber Fort',
+                            distance: '2.5 mi',
+                            rating: '4.7',
+                            color: Colors.pink,
+                          ),
                         ),
-                        SizedBox(width: 16),
-                        _placeCard(
-                          image: 'assets/sydney.jpg',
-                          city: 'Sydney',
-                          distance: '2.0 mi',
-                          rating: '4.6.5',
+                        PlaceCard(
+                          city: 'City Palace',
+                          distance: '3.0 mi',
+                          rating: '4.6',
                           color: Colors.purple,
                         ),
                       ],
@@ -201,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          
+
           // Loading overlay
           if (_isLoadingLocation)
             Container(
@@ -230,90 +230,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _placeCard({
-    required String image,
-    required String city,
-    required String distance,
-    required String rating,
-    required Color color,
-  }) {
-    return Container(
-      width: 160,
-      height: 210, // Fixed height to prevent overflow
-      decoration: BoxDecoration(
-        color: Color(0xFF232F3E),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Use minimum space needed
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            child: Container(
-              color: Colors.grey, // Placeholder for actual image
-              height: 90, // Reduced height slightly
-              width: 160,
-              child: Center(
-                child: Icon(Icons.landscape, size: 40, color: Colors.white54),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0), // Reduced padding
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Use minimum space needed
-              children: [
-                Text(
-                  city,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14, // Reduced font size
-                  ),
-                  overflow: TextOverflow.ellipsis, // Handle text overflow
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.orange, size: 14), // Smaller icon
-                    SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        distance,
-                        style: TextStyle(color: Colors.white70, fontSize: 10), // Smaller text
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      rating,
-                      style: TextStyle(color: Colors.white70, fontSize: 10), // Smaller text
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8), // Reduced spacing
-                SizedBox( // Wrap button in SizedBox to control size
-                  height: 28, // Set specific button height
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      shape: StadiumBorder(),
-                      padding: EdgeInsets.symmetric(vertical: 0, horizontal: 8), // Smaller padding
-                    ),
-                    onPressed: () {},
-                    child: Text('Explore', style: TextStyle(fontSize: 12)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   static Widget _categoryIcon(IconData icon, String label, Color color, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -328,6 +244,161 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             label,
             style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- PlaceCard Widget using Pixabay API ---
+class PlaceCard extends StatefulWidget {
+  final String city;
+  final String distance;
+  final String rating;
+  final Color color;
+
+  const PlaceCard({
+    super.key,
+    required this.city,
+    required this.distance,
+    required this.rating,
+    required this.color,
+  });
+
+  @override
+  State<PlaceCard> createState() => _PlaceCardState();
+}
+
+class _PlaceCardState extends State<PlaceCard> {
+  String? imageUrl;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchImage();
+  }
+
+  Future<void> fetchImage() async {
+    const apiKey = '51063287-f162e7a21f1002a62a82f67c3'; // <-- Replace with your Pixabay API key
+    final query = 'Jaipur ${widget.city} monument tourist place';
+    final url = Uri.parse(
+        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=photo&per_page=3');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['hits'] != null && data['hits'].isNotEmpty) {
+        setState(() {
+          imageUrl = data['hits'][0]['webformatURL'];
+          loading = false;
+        });
+      } else {
+        setState(() {
+          imageUrl = null;
+          loading = false;
+        });
+      }
+    } else {
+      setState(() {
+        imageUrl = null;
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 160,
+      height: 210,
+      decoration: BoxDecoration(
+        color: Color(0xFF232F3E),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            child: loading
+                ? Container(
+                    color: Colors.grey,
+                    height: 90,
+                    width: 160,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: widget.color,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                : (imageUrl != null
+                    ? Image.network(
+                        imageUrl!,
+                        height: 90,
+                        width: 160,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: Colors.grey,
+                        height: 90,
+                        width: 160,
+                        child: Center(
+                          child: Icon(Icons.landscape, size: 40, color: Colors.white54),
+                        ),
+                      )),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.city,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.star, color: Colors.orange, size: 14),
+                    SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        widget.distance,
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      widget.rating,
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 28,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.color,
+                      shape: StadiumBorder(),
+                      padding: EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    ),
+                    onPressed: () {},
+                    child: Text('Explore', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
