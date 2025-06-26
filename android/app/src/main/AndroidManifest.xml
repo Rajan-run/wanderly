@@ -3,6 +3,11 @@
         android:label="wanderly_android"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Add Google Maps API key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="YOUR_API_KEY_HERE" />
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,6 +36,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+    <!-- Location permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
