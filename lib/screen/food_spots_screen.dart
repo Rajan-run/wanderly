@@ -184,10 +184,10 @@ class FoodSpotsScreen extends StatelessWidget {
           ),
           FloatingActionButton(
             backgroundColor: Colors.orange,
-            child: const Icon(Icons.add, color: Colors.white),
             onPressed: () {},
             mini: true,
             elevation: 0,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
       ),

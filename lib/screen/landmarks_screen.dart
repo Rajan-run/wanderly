@@ -184,10 +184,10 @@ class LandmarksScreen extends StatelessWidget {
           ),
           FloatingActionButton(
             backgroundColor: Colors.cyan,
-            child: const Icon(Icons.add, color: Colors.white),
             onPressed: () {},
             mini: true,
             elevation: 0,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
       ),
