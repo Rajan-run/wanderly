@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class FoodSpotsScreen extends StatelessWidget {
   const FoodSpotsScreen({super.key});
@@ -52,38 +54,22 @@ class FoodSpotsScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView(
-                  children: [
-                    _foodCard(
-                      image: 'assets/artisan_table.jpg',
-                      name: 'The Artisan Table',
+                  children: const [
+                    FoodCard(
+                      searchTerm: 'pizza',
+                      name: 'Wood Fired Pizza',
                       distance: '0.5 mi',
                       rating: '4.5',
                       description: 'Cafe offering farm-to-table cuisine.',
-                      cardColor: cardColor,
+                      cardColor: Color(0xFF232F3E),
                     ),
-                    _foodCard(
-                      image: 'assets/savory_bites.jpg',
-                      name: 'Savory Bites',
+                    FoodCard(
+                      searchTerm: 'Dal Bati Churma',
+                      name: 'Chokhi Dhani',
                       distance: '0.8 mi',
                       rating: '4.8',
-                      description: 'Popular spot for small plates.',
-                      cardColor: cardColor,
-                    ),
-                    _foodCard(
-                      image: 'assets/green_garden.jpg',
-                      name: 'Green Garden',
-                      distance: '1.2 mi',
-                      rating: '4.7',
-                      description: 'Vegetarian restaurant fresh salads.',
-                      cardColor: cardColor,
-                    ),
-                    _foodCard(
-                      image: 'assets/coastal_grill.jpg',
-                      name: 'Coastal Grill',
-                      distance: '2.0 mi',
-                      rating: '4.5',
-                      description: 'Seafood and waterfront views',
-                      cardColor: cardColor,
+                      description: 'Popular spot for heritage dining.',
+                      cardColor: Color(0xFF232F3E),
                     ),
                   ],
                 ),
@@ -94,69 +80,6 @@ class FoodSpotsScreen extends StatelessWidget {
       ),
       floatingActionButton: _bottomNavBar(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-
-  Widget _foodCard({
-    required String image,
-    required String name,
-    required String distance,
-    required String rating,
-    required String description,
-    required Color cardColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            image,
-            width: 56,
-            height: 56,
-            fit: BoxFit.cover,
-          ),
-        ),
-        title: Text(
-          name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.orange, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  distance,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  rating,
-                  style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.star, color: Colors.orange, size: 15),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              description,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -184,12 +107,142 @@ class FoodSpotsScreen extends StatelessWidget {
           ),
           FloatingActionButton(
             backgroundColor: Colors.orange,
-            child: const Icon(Icons.add, color: Colors.white),
             onPressed: () {},
             mini: true,
             elevation: 0,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class FoodCard extends StatefulWidget {
+  final String searchTerm;
+  final String name;
+  final String distance;
+  final String rating;
+  final String description;
+  final Color cardColor;
+
+  const FoodCard({
+    super.key,
+    required this.searchTerm,
+    required this.name,
+    required this.distance,
+    required this.rating,
+    required this.description,
+    required this.cardColor,
+  });
+
+  @override
+  State<FoodCard> createState() => _FoodCardState();
+}
+
+class _FoodCardState extends State<FoodCard> {
+  String? imageUrl;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchImage();
+  }
+
+  Future<void> fetchImage() async {
+    const apiKey = '51063287-f162e7a21f1002a62a82f67c3'; // <-- Replace with your Pixabay API key
+    final url = Uri.parse(
+        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(widget.searchTerm + " food")}&image_type=photo&per_page=3');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['hits'] != null && data['hits'].isNotEmpty) {
+        setState(() {
+          imageUrl = data['hits'][0]['webformatURL'];
+          loading = false;
+        });
+      } else {
+        setState(() {
+          imageUrl = null;
+          loading = false;
+        });
+      }
+    } else {
+      setState(() {
+        imageUrl = null;
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        color: widget.cardColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: loading
+              ? Container(
+                  width: 56,
+                  height: 56,
+                  color: Colors.grey[800],
+                  child: const Center(child: CircularProgressIndicator()),
+                )
+              : (imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey,
+                      child: const Icon(Icons.broken_image, color: Colors.white),
+                    )),
+        ),
+        title: Text(
+          widget.name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.orange, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  widget.distance,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  widget.rating,
+                  style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.star, color: Colors.orange, size: 15),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.description,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }
