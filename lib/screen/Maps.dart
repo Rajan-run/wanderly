@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:wanderly_android/services/location_service.dart';
 
 class ExploreNearbyScreen extends StatefulWidget {
   const ExploreNearbyScreen({super.key});
@@ -9,12 +11,117 @@ class ExploreNearbyScreen extends StatefulWidget {
 }
 
 class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
-  late GoogleMapController mapController;
+  final MapController _mapController = MapController();
+  final LocationService _locationService = LocationService();
+  
+  // Default center (will be updated with user's location)
+  LatLng _center = const LatLng(37.7749, -122.4194); // Default: San Francisco
+  bool _isLoading = true;
+  bool _locationFound = false;
+  List<Marker> _markers = [];
+  String _locationAddress = "Getting address...";
 
-  final LatLng _center = const LatLng(37.7749, -122.4194); // Example: San Francisco
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
 
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoading = true;
+      _locationAddress = "Getting your location...";
+    });
+    
+    debugPrint('Requesting location from service...');
+    final position = await _locationService.getCurrentLocation(context);
+    debugPrint(position != null 
+        ? 'Location received: ${position.latitude}, ${position.longitude}'
+        : 'Failed to get location');
+        
+    if (position != null) {
+      // Get the address from the LocationService
+      final address = _locationService.currentAddress;
+      
+      // Create new location with latitude and longitude from Geolocator
+      final newLocation = LatLng(position.latitude, position.longitude);
+      
+      setState(() {
+        _center = newLocation;
+        _locationFound = true;
+        _isLoading = false;
+        _locationAddress = address.isNotEmpty ? address : "Unknown location";
+        
+        // Update markers
+        _updateMarkers();
+      });
+      
+      // Move map to new location
+      try {
+        _mapController.move(_center, 14.0);
+      } catch (e) {
+        debugPrint('Error moving map: $e');
+      }
+    } else {
+      setState(() {
+        _isLoading = false;
+        _locationAddress = "Unable to get location";
+      });
+    }
+  }
+
+  void _updateMarkers() {
+    _markers = [
+      // User's current location marker
+      Marker(
+        width: 80,
+        height: 80,
+        point: _center,
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_pin_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'You',
+                style: TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ];
   }
 
   @override
@@ -39,55 +146,53 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Google Map
-          GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: CameraPosition(
-              target: _center,
+          // OpenStreetMap with flutter_map
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              center: _center,
               zoom: 13.0,
+              onMapReady: () {
+                if (_locationFound) {
+                  _mapController.move(_center, 14.0);
+                }
+              },
             ),
-            markers: {
-              Marker(
-                markerId: const MarkerId('hidden_beach'),
-                position: const LatLng(37.7694, -122.4862),
-                infoWindow: const InfoWindow(title: 'Hidden Beach'),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.wanderly_android',
+                maxZoom: 19,
               ),
-              Marker(
-                markerId: const MarkerId('secret_garden'),
-                position: const LatLng(37.7700, -122.4500),
-                infoWindow: const InfoWindow(title: 'Secret Garden'),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+              MarkerLayer(
+                markers: _markers,
               ),
-              Marker(
-                markerId: const MarkerId('local_museum'),
-                position: const LatLng(37.8000, -122.4580),
-                infoWindow: const InfoWindow(title: 'Local Museum'),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
-              ),
-            },
-            zoomControlsEnabled: false,
-            myLocationButtonEnabled: false,
+            ],
           ),
 
-          // Custom overlay icons and labels
-          Positioned(
-            top: 120,
-            left: 40,
-            child: Column(
-              children: [
-                _mapIcon(Icons.place, 'Hidden Beach', Colors.cyan),
-                const SizedBox(height: 40),
-                Row(
+          // Loading indicator
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.6),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _mapIcon(Icons.local_florist, 'Secret Garden', Colors.orange),
-                    const SizedBox(width: 60),
-                    _mapIcon(Icons.account_balance, 'Local Museum', Colors.purple),
+                    CircularProgressIndicator(
+                      color: Colors.tealAccent,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Getting your location...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
 
           // Map controls (right side)
           Positioned(
@@ -96,12 +201,24 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
             child: Column(
               children: [
                 _circleButton(Icons.my_location, () {
-                  mapController.animateCamera(
-                    CameraUpdate.newLatLng(_center),
-                  );
+                  if (_locationFound) {
+                    _mapController.move(_center, 14.0);
+                  } else {
+                    _getCurrentLocation();
+                  }
                 }),
                 const SizedBox(height: 16),
-                _circleButton(Icons.qr_code_scanner, () {}),
+                _circleButton(Icons.add, () {
+                  // Zoom in
+                  final currentZoom = _mapController.zoom;
+                  _mapController.move(_center, currentZoom + 1);
+                }),
+                const SizedBox(height: 16),
+                _circleButton(Icons.remove, () {
+                  // Zoom out
+                  final currentZoom = _mapController.zoom;
+                  _mapController.move(_center, currentZoom - 1);
+                }),
               ],
             ),
           ),
@@ -122,20 +239,21 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/hidden_beach.jpg',
+                    child: Container(
+                      color: Colors.grey, // Placeholder
                       width: 60,
                       height: 60,
-                      fit: BoxFit.cover,
+                      child: const Icon(Icons.location_on, color: Colors.white),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
-                          'Hidden Beach',
+                          'Your Current Location',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -143,36 +261,18 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: const [
-                            Icon(Icons.location_on, color: Colors.white70, size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              '2,4 mi',
+                        _locationFound 
+                          ? Text(
+                              _locationAddress,
+                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            )
+                          : Text(
+                              'Location not available',
                               style: TextStyle(color: Colors.white70, fontSize: 14),
                             ),
-                            SizedBox(width: 12),
-                            Icon(Icons.star, color: Colors.amber, size: 16),
-                            Icon(Icons.star, color: Colors.amber, size: 16),
-                            Icon(Icons.star, color: Colors.amber, size: 16),
-                            Icon(Icons.star, color: Colors.amber, size: 16),
-                            Icon(Icons.star_border, color: Colors.amber, size: 16),
-                          ],
-                        ),
                       ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyan,
-                      shape: StadiumBorder(),
-                    ),
-                    onPressed: () {
-                      // Launch directions or maps
-                    },
-                    child: const Text(
-                      'Get Directions',
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -181,19 +281,13 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _mapIcon(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 40),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-      ],
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.tealAccent,
+        onPressed: () {
+          _getCurrentLocation();
+        },
+        child: const Icon(Icons.my_location, color: Colors.black),
+      ),
     );
   }
 
