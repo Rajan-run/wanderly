@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class LandmarksScreen extends StatelessWidget {
   const LandmarksScreen({super.key});
@@ -52,38 +54,34 @@ class LandmarksScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView(
-                  children: [
-                    _landmarkCard(
-                      image: 'assets/golden_gate.jpg',
-                      name: 'Golden Gate Bridge',
+                  children: const [
+                    LandmarkCard(
+                      name: 'Hawa Mahal',
                       distance: '0.5 mi',
                       rating: '4.9',
-                      description: 'Iconic suspension bridge in San Francisco.',
-                      cardColor: cardColor,
+                      description: 'Iconic palace with a unique facade.',
+                      cardColor: Color(0xFF232F3E),
                     ),
-                    _landmarkCard(
-                      image: 'assets/tokyo_tower.jpg',
-                      name: 'Tokyo Tower',
+                    LandmarkCard(
+                      name: 'Amber Fort',
                       distance: '1.2 mi',
                       rating: '4.8',
-                      description: 'Famous communications and observation tower.',
-                      cardColor: cardColor,
+                      description: 'Majestic fort with artistic Hindu style.',
+                      cardColor: Color(0xFF232F3E),
                     ),
-                    _landmarkCard(
-                      image: 'assets/sydney_opera.jpg',
-                      name: 'Sydney Opera House',
+                    LandmarkCard(
+                      name: 'City Palace',
                       distance: '2.0 mi',
                       rating: '4.7',
-                      description: 'World-renowned performing arts center.',
-                      cardColor: cardColor,
+                      description: 'Royal residence with museums and courtyards.',
+                      cardColor: Color(0xFF232F3E),
                     ),
-                    _landmarkCard(
-                      image: 'assets/statue_of_liberty.jpg',
-                      name: 'Statue of Liberty',
+                    LandmarkCard(
+                      name: 'Jantar Mantar',
                       distance: '3.5 mi',
                       rating: '4.8',
-                      description: 'Symbol of freedom in New York City.',
-                      cardColor: cardColor,
+                      description: 'Historic astronomical observatory.',
+                      cardColor: Color(0xFF232F3E),
                     ),
                   ],
                 ),
@@ -94,69 +92,6 @@ class LandmarksScreen extends StatelessWidget {
       ),
       floatingActionButton: _bottomNavBar(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-
-  Widget _landmarkCard({
-    required String image,
-    required String name,
-    required String distance,
-    required String rating,
-    required String description,
-    required Color cardColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            image,
-            width: 56,
-            height: 56,
-            fit: BoxFit.cover,
-          ),
-        ),
-        title: Text(
-          name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.cyan, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  distance,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  rating,
-                  style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.star, color: Colors.cyan, size: 15),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              description,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -190,6 +125,135 @@ class LandmarksScreen extends StatelessWidget {
             child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class LandmarkCard extends StatefulWidget {
+  final String name;
+  final String distance;
+  final String rating;
+  final String description;
+  final Color cardColor;
+
+  const LandmarkCard({
+    super.key,
+    required this.name,
+    required this.distance,
+    required this.rating,
+    required this.description,
+    required this.cardColor,
+  });
+
+  @override
+  State<LandmarkCard> createState() => _LandmarkCardState();
+}
+
+class _LandmarkCardState extends State<LandmarkCard> {
+  String? imageUrl;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchImage();
+  }
+
+  Future<void> fetchImage() async {
+    const apiKey = '51063287-f162e7a21f1002a62a82f67c3'; // <-- Replace with your Pixabay API key
+    final query = 'Jaipur ${widget.name} monument tourist place';
+    final url = Uri.parse(
+        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=photo&per_page=3');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['hits'] != null && data['hits'].isNotEmpty) {
+        setState(() {
+          imageUrl = data['hits'][0]['webformatURL'];
+          loading = false;
+        });
+      } else {
+        setState(() {
+          imageUrl = null;
+          loading = false;
+        });
+      }
+    } else {
+      setState(() {
+        imageUrl = null;
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        color: widget.cardColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: loading
+              ? Container(
+                  width: 56,
+                  height: 56,
+                  color: Colors.grey[800],
+                  child: const Center(child: CircularProgressIndicator()),
+                )
+              : (imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey,
+                      child: const Icon(Icons.broken_image, color: Colors.white),
+                    )),
+        ),
+        title: Text(
+          widget.name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.cyan, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  widget.distance,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  widget.rating,
+                  style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.star, color: Colors.cyan, size: 15),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.description,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }

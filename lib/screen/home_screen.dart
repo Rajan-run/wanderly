@@ -1,269 +1,407 @@
-// Example: lib/screens/home_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:wanderly_android/screen/Maps.dart';
 import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
+import 'package:wanderly_android/services/location_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoadingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestLocationPermission();
+    });
+  }
+
+  Future<void> _requestLocationPermission() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    final locationService = LocationService();
+    final position = await locationService.getCurrentLocation(context);
+
+    setState(() {
+      _isLoadingLocation = false;
+    });
+
+    if (position != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location accessed successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final Color bgColor = Color(0xFF18222D);
-    final Color cardColor = Color(0xFF232F3E);
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: ListView(
-            children: [
-              // Search Bar
-              Container(
-                decoration: BoxDecoration(
-                  color: Color(0xFF1E2A38),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, color: Colors.tealAccent),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search',
-                          border: InputBorder.none,
-                          hintStyle: TextStyle(color: Colors.tealAccent),
-                        ),
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    Icon(Icons.mic, color: Colors.tealAccent),
-                    SizedBox(width: 10),
-                    Icon(Icons.menu, color: Colors.tealAccent),
-                  ],
-                ),
-              ),
-              SizedBox(height: 30),
-
-              // Nearby Places
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: ListView(
                 children: [
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF1E2A38),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search, color: Colors.tealAccent),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search',
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(color: Colors.tealAccent),
+                            ),
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        Icon(Icons.mic, color: Colors.tealAccent),
+                        SizedBox(width: 10),
+                        Icon(Icons.menu, color: Colors.tealAccent),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 30),
+
+                  // Nearby Places
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Nearby Places',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      CircleAvatar(
+                        backgroundColor: Colors.orange,
+                        child: IconButton(
+                          icon: const Icon(Icons.location_on, color: Colors.white),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ExploreNearbyScreen()),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  SizedBox(
+                    height: 210,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: PlaceCard(
+                            city: 'Hawa Mahal',
+                            distance: '1.0 mi',
+                            rating: '4.8',
+                            color: Colors.orange,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: PlaceCard(
+                            city: 'Amber Fort',
+                            distance: '2.5 mi',
+                            rating: '4.7',
+                            color: Colors.pink,
+                          ),
+                        ),
+                        PlaceCard(
+                          city: 'City Palace',
+                          distance: '3.0 mi',
+                          rating: '4.6',
+                          color: Colors.purple,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 30),
+
+                  // Popular Categories
                   Text(
-                    'Nearby Places',
+                    'Popular Categories',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  CircleAvatar(
-                    backgroundColor: Colors.orange,
-                    child: IconButton(
-                      icon: const Icon(Icons.location_on, color: Colors.white),
-                      onPressed: () {
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan, onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LandmarksScreen()),
+                        );
+                      }),
+                      _categoryIcon(Icons.restaurant, 'Food', Colors.orange, onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FoodSpotsScreen()),
+                        );
+                      }),
+                      _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
+                      _categoryIcon(Icons.event, 'Events', Colors.indigo),
+                      _categoryIcon(Icons.map, 'View Map', Colors.cyan, onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ExploreNearbyScreen()),
                         );
-                      },
+                      }),
+                    ],
+                  ),
+                  SizedBox(height: 30),
+
+                  // Trending Now (Placeholder)
+                  Text(
+                    'Trending Now',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  // Add trending items here...
                 ],
               ),
-              SizedBox(height: 20),
-              SizedBox(
-                height: 210,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
+            ),
+          ),
+
+          // Loading overlay
+          if (_isLoadingLocation)
+            Container(
+              color: Colors.black.withOpacity(0.6),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _placeCard(
-                      image: 'assets/sf.jpg',
-                      city: 'San Francisco',
-                      distance: '0.5 mi',
-                      rating: '4.4.8',
-                      color: Colors.orange,
+                    CircularProgressIndicator(
+                      color: Colors.tealAccent,
                     ),
-                    SizedBox(width: 16),
-                    _placeCard(
-                      image: 'assets/tokyo.jpg',
-                      city: 'Tokyo',
-                      distance: '1.2 mi',
-                      rating: '4.7',
-                      color: Colors.pink,
-                    ),
-                    SizedBox(width: 16),
-                    _placeCard(
-                      image: 'assets/sydney.jpg',
-                      city: 'Sydney',
-                      distance: '2.0 mi',
-                      rating: '4.6.5',
-                      color: Colors.purple,
-                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Getting your location...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
                   ],
                 ),
               ),
-              SizedBox(height: 30),
-
-              // Popular Categories
-              Text(
-                'Popular Categories',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan, onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LandmarksScreen()),
-                    );
-                  }),
-                  _categoryIcon(Icons.restaurant, 'Food', Colors.orange, onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const FoodSpotsScreen()),
-                    );
-                  }),
-                  _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
-                  _categoryIcon(Icons.event, 'Events', Colors.indigo),
-                  _viewMapButton(),
-                ],
-              ),
-              SizedBox(height: 30),
-
-              // Trending Now (Placeholder)
-              Text(
-                'Trending Now',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              // Add trending items here...
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _placeCard({
-    required String image,
-    required String city,
-    required String distance,
-    required String rating,
-    required Color color,
-  }) {
-    return Container(
-      width: 160,
-      decoration: BoxDecoration(
-        color: Color(0xFF232F3E),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            child: Image.asset(
-              image,
-              height: 110,
-              width: 160,
-              fit: BoxFit.cover,
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  city,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.orange, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      distance,
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      rating,
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: color,
-                    shape: StadiumBorder(),
-                  ),
-                  onPressed: () {},
-                  child: Text('Explore'),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
   static Widget _categoryIcon(IconData icon, String label, Color color, {VoidCallback? onTap}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Column(
-      children: [
-        CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          radius: 28,
-          child: Icon(icon, color: color, size: 28),
-        ),
-        SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
-    ),
-  );
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            radius: 28,
+            child: Icon(icon, color: color, size: 28),
+          ),
+          SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-  Widget _viewMapButton() {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Color(0xFF232F3E),
-            borderRadius: BorderRadius.circular(16),
+// --- PlaceCard Widget using Pixabay API ---
+class PlaceCard extends StatefulWidget {
+  final String city;
+  final String distance;
+  final String rating;
+  final Color color;
+
+  const PlaceCard({
+    super.key,
+    required this.city,
+    required this.distance,
+    required this.rating,
+    required this.color,
+  });
+
+  @override
+  State<PlaceCard> createState() => _PlaceCardState();
+}
+
+class _PlaceCardState extends State<PlaceCard> {
+  String? imageUrl;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchImage();
+  }
+
+  Future<void> fetchImage() async {
+    const apiKey = '51063287-f162e7a21f1002a62a82f67c3'; // <-- Replace with your Pixabay API key
+    final query = 'Jaipur ${widget.city} monument tourist place';
+    final url = Uri.parse(
+        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(query)}&image_type=photo&per_page=3');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['hits'] != null && data['hits'].isNotEmpty) {
+        setState(() {
+          imageUrl = data['hits'][0]['webformatURL'];
+          loading = false;
+        });
+      } else {
+        setState(() {
+          imageUrl = null;
+          loading = false;
+        });
+      }
+    } else {
+      setState(() {
+        imageUrl = null;
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 160,
+      height: 210,
+      decoration: BoxDecoration(
+        color: Color(0xFF232F3E),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            child: loading
+                ? Container(
+                    color: Colors.grey,
+                    height: 90,
+                    width: 160,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: widget.color,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                : (imageUrl != null
+                    ? Image.network(
+                        imageUrl!,
+                        height: 90,
+                        width: 160,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: Colors.grey,
+                        height: 90,
+                        width: 160,
+                        child: Center(
+                          child: Icon(Icons.landscape, size: 40, color: Colors.white54),
+                        ),
+                      )),
           ),
-          padding: EdgeInsets.all(8),
-          child: Icon(Icons.map, color: Colors.cyan, size: 32),
-        ),
-        SizedBox(height: 6),
-        Text(
-          'View Map',
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.city,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.star, color: Colors.orange, size: 14),
+                    SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        widget.distance,
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      widget.rating,
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 28,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.color,
+                      shape: StadiumBorder(),
+                      padding: EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    ),
+                    onPressed: () {},
+                    child: Text('Explore', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
