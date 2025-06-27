@@ -2,13 +2,71 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-class FoodSpotsScreen extends StatelessWidget {
-  const FoodSpotsScreen({super.key});
+class FoodSpotsScreen extends StatefulWidget {
+  final List<Map<String, String>>? itinerary;
+  final void Function(List<Map<String, String>> updated)? onItineraryChanged;
+
+  const FoodSpotsScreen({
+    super.key,
+    this.itinerary,
+    this.onItineraryChanged,
+  });
+
+  @override
+  State<FoodSpotsScreen> createState() => _FoodSpotsScreenState();
+}
+
+class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
+  late List<Map<String, String>> _itinerary;
+
+  final List<Map<String, String>> _foodSpots = [
+    {
+      'name': 'Wood Fired Pizza',
+      'distance': '0.5 mi',
+      'rating': '4.5',
+      'description': 'Cafe offering farm-to-table cuisine.',
+      'searchTerm': 'pizza',
+    },
+    {
+      'name': 'Chokhi Dhani',
+      'distance': '0.8 mi',
+      'rating': '4.8',
+      'description': 'Popular spot for heritage dining.',
+      'searchTerm': 'Dal Bati Churma',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _itinerary = widget.itinerary != null
+        ? List<Map<String, String>>.from(widget.itinerary!)
+        : [];
+  }
+
+  void _addToItinerary(Map<String, String> item) {
+    if (!_itinerary.any((i) => i['name'] == item['name'] && i['type'] == item['type'])) {
+      setState(() {
+        _itinerary.add(item);
+      });
+      widget.onItineraryChanged?.call(_itinerary);
+    }
+  }
+
+  void _removeFromItinerary(Map<String, String> item) {
+    setState(() {
+      _itinerary.removeWhere((i) => i['name'] == item['name'] && i['type'] == item['type']);
+    });
+    widget.onItineraryChanged?.call(_itinerary);
+  }
+
+  bool _isInItinerary(String name) {
+    return _itinerary.any((i) => i['name'] == name && i['type'] == 'Food');
+  }
 
   @override
   Widget build(BuildContext context) {
     final bgColor = const Color(0xFF18222D);
-    final cardColor = const Color(0xFF232F3E);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -54,24 +112,26 @@ class FoodSpotsScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView(
-                  children: const [
-                    FoodCard(
-                      searchTerm: 'pizza',
-                      name: 'Wood Fired Pizza',
-                      distance: '0.5 mi',
-                      rating: '4.5',
-                      description: 'Cafe offering farm-to-table cuisine.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                    FoodCard(
-                      searchTerm: 'Dal Bati Churma',
-                      name: 'Chokhi Dhani',
-                      distance: '0.8 mi',
-                      rating: '4.8',
-                      description: 'Popular spot for heritage dining.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                  ],
+                  children: _foodSpots.map((food) {
+                    final isAdded = _isInItinerary(food['name']!);
+                    return FoodCard(
+                      searchTerm: food['searchTerm']!,
+                      name: food['name']!,
+                      distance: food['distance']!,
+                      rating: food['rating']!,
+                      description: food['description']!,
+                      cardColor: const Color(0xFF232F3E),
+                      isAdded: isAdded,
+                      onAdd: () => _addToItinerary({
+                        'name': food['name']!,
+                        'type': 'Food',
+                      }),
+                      onRemove: () => _removeFromItinerary({
+                        'name': food['name']!,
+                        'type': 'Food',
+                      }),
+                    );
+                  }).toList(),
                 ),
               ),
             ],
@@ -125,6 +185,9 @@ class FoodCard extends StatefulWidget {
   final String rating;
   final String description;
   final Color cardColor;
+  final bool isAdded;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
 
   const FoodCard({
     super.key,
@@ -134,6 +197,9 @@ class FoodCard extends StatefulWidget {
     required this.rating,
     required this.description,
     required this.cardColor,
+    required this.isAdded,
+    required this.onAdd,
+    required this.onRemove,
   });
 
   @override
@@ -240,6 +306,46 @@ class _FoodCardState extends State<FoodCard> {
             Text(
               widget.description,
               style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: widget.isAdded
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: null,
+                          icon: const Icon(Icons.check, color: Colors.green),
+                          label: const Text('Added',style: TextStyle(color: Colors.green),),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: widget.onRemove,
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          label: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    )
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      onPressed: widget.onAdd,
+                      child: const Text('Add to Itinerary'),
+                    ),
             ),
           ],
         ),
