@@ -16,6 +16,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingLocation = false;
 
+  final List<Map<String, String>> _itinerary = [];
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoadingLocation = false;
     });
 
-    if (position != null) {
+    if (position != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Location accessed successfully!'),
@@ -45,6 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  void _removeFromItinerary(Map<String, String> item) {
+    setState(() {
+      _itinerary.remove(item);
+    });
   }
 
   @override
@@ -163,16 +171,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan, onTap: () {
-                        Navigator.push(
+                      _categoryIcon(Icons.account_balance, 'Landmarks', Colors.cyan, onTap: () async {
+                        await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const LandmarksScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => LandmarksScreen(
+                              itinerary: _itinerary,
+                              onItineraryChanged: (updatedList) {
+                                setState(() {
+                                  _itinerary.clear();
+                                  _itinerary.addAll(updatedList);
+                                });
+                              },
+                            ),
+                          ),
                         );
                       }),
-                      _categoryIcon(Icons.restaurant, 'Food', Colors.orange, onTap: () {
-                        Navigator.push(
+                      _categoryIcon(Icons.restaurant, 'Food', Colors.orange, onTap: () async {
+                        await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const FoodSpotsScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => FoodSpotsScreen(
+                              itinerary: _itinerary,
+                              onItineraryChanged: (updatedList) {
+                                setState(() {
+                                  _itinerary.clear();
+                                  _itinerary.addAll(updatedList);
+                                });
+                              },
+                            ),
+                          ),
                         );
                       }),
                       _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
@@ -187,16 +215,79 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   SizedBox(height: 30),
 
-                  // Trending Now (Placeholder)
-                  Text(
-                    'Trending Now',
+                  // Itinerary Section
+                  const Text(
+                    'Itinerary',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Add trending items here...
+                  const SizedBox(height: 12),
+
+                  // --- DRAGGABLE ITINERARY WITH THREAD ---
+                  if (_itinerary.isNotEmpty)
+                    SizedBox(
+                      height: 90.0 * _itinerary.length,
+                      child: Stack(
+                        children: [
+                          // Thread connecting the cards
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: ThreadPainter(_itinerary.length),
+                            ),
+                          ),
+                          // Draggable, reorderable cards
+                          ReorderableListView(
+                            buildDefaultDragHandles: false,
+                            onReorder: (oldIndex, newIndex) {
+                              setState(() {
+                                if (newIndex > oldIndex) newIndex -= 1;
+                                final item = _itinerary.removeAt(oldIndex);
+                                _itinerary.insert(newIndex, item);
+                              });
+                            },
+                            children: [
+                              for (int i = 0; i < _itinerary.length; i++)
+                                KeyedSubtree(
+                                  key: ValueKey(_itinerary[i]['name']),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Card(
+                                      color: Colors.teal.shade900,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      child: ListTile(
+                                        title: Text(
+                                          _itinerary[i]['name']!,
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                        subtitle: Text(
+                                          _itinerary[i]['type']!,
+                                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        ),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                              onPressed: () => _removeFromItinerary(_itinerary[i]),
+                                            ),
+                                            ReorderableDragStartListener(
+                                              index: i,
+                                              child: const Icon(Icons.drag_handle, color: Colors.white54),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -404,4 +495,34 @@ class _PlaceCardState extends State<PlaceCard> {
       ),
     );
   }
+}
+
+// --- CustomPainter for the thread connecting itinerary cards ---
+class ThreadPainter extends CustomPainter {
+  final int count;
+  ThreadPainter(this.count);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (count < 2) return;
+    final paint = Paint()
+      ..color = Colors.redAccent
+      ..strokeWidth = 2.5;
+
+    final double cardHeight = 90.0;
+    final double cardCenterX = size.width / 2;
+
+    for (int i = 0; i < count - 1; i++) {
+      final startY = cardHeight * i + cardHeight / 2;
+      final endY = cardHeight * (i + 1) + cardHeight / 2;
+      canvas.drawLine(
+        Offset(cardCenterX, startY),
+        Offset(cardCenterX, endY),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ThreadPainter oldDelegate) => oldDelegate.count != count;
 }

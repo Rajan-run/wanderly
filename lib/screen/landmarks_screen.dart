@@ -2,13 +2,81 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-class LandmarksScreen extends StatelessWidget {
-  const LandmarksScreen({super.key});
+class LandmarksScreen extends StatefulWidget {
+  final List<Map<String, String>>? itinerary;
+  final void Function(List<Map<String, String>> updated)? onItineraryChanged;
+
+  const LandmarksScreen({
+    super.key,
+    this.itinerary,
+    this.onItineraryChanged,
+  });
+
+  @override
+  State<LandmarksScreen> createState() => _LandmarksScreenState();
+}
+
+class _LandmarksScreenState extends State<LandmarksScreen> {
+  late List<Map<String, String>> _itinerary;
+
+  final List<Map<String, String>> _landmarks = [
+    {
+      'name': 'Hawa Mahal',
+      'distance': '0.5 mi',
+      'rating': '4.9',
+      'description': 'Iconic palace with a unique facade.',
+    },
+    {
+      'name': 'Amber Fort',
+      'distance': '1.2 mi',
+      'rating': '4.8',
+      'description': 'Majestic fort with artistic Hindu style.',
+    },
+    {
+      'name': 'City Palace',
+      'distance': '2.0 mi',
+      'rating': '4.7',
+      'description': 'Royal residence with museums and courtyards.',
+    },
+    {
+      'name': 'Jantar Mantar',
+      'distance': '3.5 mi',
+      'rating': '4.8',
+      'description': 'Historic astronomical observatory.',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _itinerary = widget.itinerary != null
+        ? List<Map<String, String>>.from(widget.itinerary!)
+        : [];
+  }
+
+  void _addToItinerary(Map<String, String> item) {
+    if (!_itinerary.any((i) => i['name'] == item['name'] && i['type'] == item['type'])) {
+      setState(() {
+        _itinerary.add(item);
+      });
+      widget.onItineraryChanged?.call(_itinerary);
+    }
+  }
+
+  void _removeFromItinerary(Map<String, String> item) {
+    setState(() {
+      _itinerary.removeWhere((i) => i['name'] == item['name'] && i['type'] == item['type']);
+    });
+    widget.onItineraryChanged?.call(_itinerary);
+  }
+
+  bool _isInItinerary(String name) {
+    return _itinerary.any((i) => i['name'] == name && i['type'] == 'Landmark');
+  }
 
   @override
   Widget build(BuildContext context) {
     final bgColor = const Color(0xFF18222D);
-    final cardColor = const Color(0xFF232F3E);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -54,36 +122,25 @@ class LandmarksScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView(
-                  children: const [
-                    LandmarkCard(
-                      name: 'Hawa Mahal',
-                      distance: '0.5 mi',
-                      rating: '4.9',
-                      description: 'Iconic palace with a unique facade.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                    LandmarkCard(
-                      name: 'Amber Fort',
-                      distance: '1.2 mi',
-                      rating: '4.8',
-                      description: 'Majestic fort with artistic Hindu style.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                    LandmarkCard(
-                      name: 'City Palace',
-                      distance: '2.0 mi',
-                      rating: '4.7',
-                      description: 'Royal residence with museums and courtyards.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                    LandmarkCard(
-                      name: 'Jantar Mantar',
-                      distance: '3.5 mi',
-                      rating: '4.8',
-                      description: 'Historic astronomical observatory.',
-                      cardColor: Color(0xFF232F3E),
-                    ),
-                  ],
+                  children: _landmarks.map((landmark) {
+                    final isAdded = _isInItinerary(landmark['name']!);
+                    return LandmarkCard(
+                      name: landmark['name']!,
+                      distance: landmark['distance']!,
+                      rating: landmark['rating']!,
+                      description: landmark['description']!,
+                      cardColor: const Color(0xFF232F3E),
+                      isAdded: isAdded,
+                      onAdd: () => _addToItinerary({
+                        'name': landmark['name']!,
+                        'type': 'Landmark',
+                      }),
+                      onRemove: () => _removeFromItinerary({
+                        'name': landmark['name']!,
+                        'type': 'Landmark',
+                      }),
+                    );
+                  }).toList(),
                 ),
               ),
             ],
@@ -136,6 +193,9 @@ class LandmarkCard extends StatefulWidget {
   final String rating;
   final String description;
   final Color cardColor;
+  final bool isAdded;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
 
   const LandmarkCard({
     super.key,
@@ -144,6 +204,9 @@ class LandmarkCard extends StatefulWidget {
     required this.rating,
     required this.description,
     required this.cardColor,
+    required this.isAdded,
+    required this.onAdd,
+    required this.onRemove,
   });
 
   @override
@@ -251,6 +314,48 @@ class _LandmarkCardState extends State<LandmarkCard> {
             Text(
               widget.description,
               style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: widget.isAdded
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: null,
+                          icon: const Icon(Icons.check, color: Colors.green),
+                          label: const Text('Added',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: widget.onRemove,
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          label: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    )
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.cyan,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      onPressed: widget.onAdd,
+                      child: const Text('Add to Itinerary'),
+                    ),
             ),
           ],
         ),

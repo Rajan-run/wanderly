@@ -210,7 +210,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 6,
                       spreadRadius: 2,
                     ),
@@ -233,7 +233,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
@@ -266,7 +266,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 6,
                       spreadRadius: 2,
                     ),
@@ -289,7 +289,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
@@ -381,7 +381,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
           // Loading indicator
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -537,7 +537,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
 
   Widget _circleButton(IconData icon, VoidCallback onTap) {
     return Material(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),

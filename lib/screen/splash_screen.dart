@@ -68,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
           FadeTransition(
             opacity: _bgAnimation,
             child: Container(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
             ),
           ),
           // Centered animated logo and app name
