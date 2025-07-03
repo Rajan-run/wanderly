@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:wanderly_android/screen/Maps.dart';
+import 'package:wanderly_android/models/route_optimizer.dart';
 
 class LandmarksScreen extends StatefulWidget {
   final List<Map<String, String>>? itinerary;
@@ -19,30 +21,38 @@ class LandmarksScreen extends StatefulWidget {
 class _LandmarksScreenState extends State<LandmarksScreen> {
   late List<Map<String, String>> _itinerary;
 
-  final List<Map<String, String>> _landmarks = [
+  final List<Map<String, dynamic>> _landmarks = [
     {
       'name': 'Hawa Mahal',
       'distance': '0.5 mi',
       'rating': '4.9',
       'description': 'Iconic palace with a unique facade.',
+      'latitude': 26.9239,
+      'longitude': 75.8267,
     },
     {
       'name': 'Amber Fort',
       'distance': '1.2 mi',
       'rating': '4.8',
       'description': 'Majestic fort with artistic Hindu style.',
+      'latitude': 26.9855,
+      'longitude': 75.8513,
     },
     {
       'name': 'City Palace',
       'distance': '2.0 mi',
       'rating': '4.7',
       'description': 'Royal residence with museums and courtyards.',
+      'latitude': 26.9258,
+      'longitude': 75.8237,
     },
     {
       'name': 'Jantar Mantar',
       'distance': '3.5 mi',
       'rating': '4.8',
       'description': 'Historic astronomical observatory.',
+      'latitude': 26.9246,
+      'longitude': 75.8242,
     },
   ];
 
@@ -54,20 +64,90 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
         : [];
   }
 
-  void _addToItinerary(Map<String, String> item) {
+  void _addToItinerary(Map<String, dynamic> item) {
     if (!_itinerary.any((i) => i['name'] == item['name'] && i['type'] == item['type'])) {
       setState(() {
-        _itinerary.add(item);
+        // Add the item to the itinerary with all the necessary data
+        _itinerary.add({
+          'name': item['name'],
+          'type': item['type'],
+          'latitude': item['latitude'].toString(),
+          'longitude': item['longitude'].toString(),
+        });
       });
       widget.onItineraryChanged?.call(_itinerary);
+      
+      // Show a confirmation message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item['name']} added to your itinerary'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'VIEW ON MAP',
+            textColor: Colors.white,
+            onPressed: () => _navigateToMapWithItinerary(),
+          ),
+        ),
+      );
     }
   }
 
-  void _removeFromItinerary(Map<String, String> item) {
+  void _removeFromItinerary(Map<String, dynamic> item) {
     setState(() {
       _itinerary.removeWhere((i) => i['name'] == item['name'] && i['type'] == item['type']);
     });
     widget.onItineraryChanged?.call(_itinerary);
+  }
+  // We don't need these methods anymore since we're not automatically
+  // navigating to the map when adding/removing landmarks
+
+  // Navigate to the map with all landmarks in the itinerary
+  void _navigateToMapWithItinerary() {
+    if (_itinerary.isEmpty) {
+      // Show a message if no landmarks are added
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add landmarks to your itinerary first'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Convert itinerary items to Location objects
+    final List<Location> landmarkLocations = _itinerary
+        .where((item) => item['type'] == 'Landmark' && 
+                         item['latitude'] != null && 
+                         item['longitude'] != null)
+        .map((item) => Location(
+              name: item['name']!,
+              latitude: double.parse(item['latitude']!),
+              longitude: double.parse(item['longitude']!),
+            ))
+        .toList();
+
+    if (landmarkLocations.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No valid landmark locations found'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to the map screen with all landmarks
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExploreNearbyScreen(
+          landmarkLocations: landmarkLocations,
+        ),
+      ),
+    );
   }
 
   bool _isInItinerary(String name) {
@@ -134,10 +214,14 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
                       onAdd: () => _addToItinerary({
                         'name': landmark['name']!,
                         'type': 'Landmark',
+                        'latitude': landmark['latitude'],
+                        'longitude': landmark['longitude'],
                       }),
                       onRemove: () => _removeFromItinerary({
                         'name': landmark['name']!,
                         'type': 'Landmark',
+                        'latitude': landmark['latitude'],
+                        'longitude': landmark['longitude'],
                       }),
                     );
                   }).toList(),
@@ -164,7 +248,10 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.location_on, color: Colors.cyan),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to the map with all landmarks currently in the itinerary
+              _navigateToMapWithItinerary();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.grid_view, color: Colors.white70),

@@ -9,7 +9,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ExploreNearbyScreen extends StatefulWidget {
-  const ExploreNearbyScreen({super.key});
+  final List<Location>? landmarkLocations;
+  
+  const ExploreNearbyScreen({super.key, this.landmarkLocations});
 
   @override
   State<ExploreNearbyScreen> createState() => _ExploreNearbyScreenState();
@@ -35,10 +37,24 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   List<Location>? _optimizedRoute;
   String _errorMessage = '';
   bool _isLoadingRoute = false;
+  bool _hasLandmarks = false; // Flag to indicate landmarks were passed
 
   @override
   void initState() {
     super.initState();
+    
+    // Add any landmark locations passed to the map
+    if (widget.landmarkLocations != null && widget.landmarkLocations!.isNotEmpty) {
+      setState(() {
+        // Add landmarks to the locations list
+        _locations.addAll(widget.landmarkLocations!);
+      });
+      
+      // Flag to optimize route after getting current location
+      _hasLandmarks = true;
+    }
+    
+    // Get the current location
     _getCurrentLocation();
   }
 
@@ -84,18 +100,30 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
         _locationFound = true;
         _isLoading = false;
         _locationAddress = address;
-        // Always set current location as the first point
+        
+        // Create the current location object
         final currentLoc = Location(
           name: address,
           latitude: position.latitude,
           longitude: position.longitude,
         );
-        if (_locations.isEmpty || _locations.first.latitude != currentLoc.latitude || _locations.first.longitude != currentLoc.longitude) {
-          _locations.insert(0, currentLoc);
-        } else {
-          _locations[0] = currentLoc;
-        }
+        
+        // Remove any existing user location if it exists
+        _locations.removeWhere((loc) => 
+          loc.name == 'Current Location' || 
+          (loc.latitude == currentLoc.latitude && loc.longitude == currentLoc.longitude)
+        );
+        
+        // Insert current location as the first point (point A)
+        _locations.insert(0, currentLoc);
+        
+        // Reset optimized route since locations changed
         _optimizedRoute = null;
+        
+        // If we have landmarks passed from the itinerary, automatically optimize the route
+        if (_hasLandmarks && _locations.length >= 2) {
+          _optimizeRoute();
+        }
       });
 
       try {
@@ -130,43 +158,39 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   // Remove a location
   void _removeLocation(int index) {
     setState(() {
+      bool removingCurrentLocation = false;
+      Location? nextLocation;
+
       if (_optimizedRoute != null) {
-        // For the optimized route, we need to handle point A (current location) specially
-        if (index == 0 && _userLocation != null) {
-          final locationToRemove = _optimizedRoute![index];
-          // Only prevent removal if this is actually the user's location
-          if (locationToRemove.latitude == _userLocation!.latitude && 
-              locationToRemove.longitude == _userLocation!.longitude) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot remove your current location (Point A)'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 2),
-              ),
-            );
-            return;
+        // For the optimized route, identify the location being removed
+        final originalLocation = _optimizedRoute![index];
+        
+        // Check if this is the current location
+        if (_userLocation != null && originalLocation.latitude == _userLocation!.latitude && 
+            originalLocation.longitude == _userLocation!.longitude) {
+          removingCurrentLocation = true;
+          // Store next location for centering map if available
+          if (_optimizedRoute!.length > 1) {
+            nextLocation = _optimizedRoute![index == 0 ? 1 : 0];
           }
+          // Reset the user location reference
+          _userLocation = null;
         }
         
-        final originalLocation = _optimizedRoute![index];
         _locations.remove(originalLocation);
         _optimizedRoute = null;
       } else {
-        // Don't allow removing the current location (point A) if it's at index 0
-        if (index == 0 && _userLocation != null) {
-          final locationToRemove = _locations[index];
-          // Only prevent removal if this is actually the user's location
-          if (locationToRemove.latitude == _userLocation!.latitude && 
-              locationToRemove.longitude == _userLocation!.longitude) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cannot remove your current location (Point A)'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 2),
-              ),
-            );
-            return;
+        // Check if removing the current location
+        if (index == 0 && _userLocation != null && 
+            _locations[0].latitude == _userLocation!.latitude && 
+            _locations[0].longitude == _userLocation!.longitude) {
+          removingCurrentLocation = true;
+          // Store next location for centering map if available
+          if (_locations.length > 1) {
+            nextLocation = _locations[1];
           }
+          // Reset the user location reference
+          _userLocation = null;
         }
         
         _locations.removeAt(index);
@@ -185,6 +209,17 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
             _locations.insert(0, userLocation);
           }
         }
+      }
+      
+      // If we removed the current location and have other locations, center the map on the new first location
+      if (removingCurrentLocation && nextLocation != null) {
+        // Schedule to run after this frame to ensure the state is updated
+        final Location locationToCenter = nextLocation; // Create a non-nullable reference
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final newCenter = LatLng(locationToCenter.latitude, locationToCenter.longitude);
+          _center = newCenter;
+          _mapController.move(newCenter, _mapController.zoom);
+        });
       }
     });
   }
