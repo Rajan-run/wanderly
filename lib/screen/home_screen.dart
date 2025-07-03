@@ -5,6 +5,7 @@ import 'package:wanderly_android/screen/Maps.dart';
 import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
 import 'package:wanderly_android/services/location_service.dart';
+import 'package:wanderly_android/pages/route_optimizer_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -209,6 +210,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ExploreNearbyScreen()),
+                        );
+                      }),
+                      _categoryIcon(Icons.route, 'Optimize Route', Colors.green, onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RouteOptimizerPage()),
                         );
                       }),
                     ],
