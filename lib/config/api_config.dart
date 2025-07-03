@@ -4,5 +4,5 @@ class ApiConfig {
   // OpenRouteService API Key
   // Replace 'YOUR_API_KEY' with your actual key in development
   // In production, use secure methods to access this key
-  static const String openRouteServiceApiKey = '22222222222222222';
+  static const String openRouteServiceApiKey = '5b3ce3597851110001cf624864a34fd33bcc4cd88adb9564dd395343';
 }
