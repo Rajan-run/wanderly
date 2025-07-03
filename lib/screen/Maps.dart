@@ -131,11 +131,60 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   void _removeLocation(int index) {
     setState(() {
       if (_optimizedRoute != null) {
+        // For the optimized route, we need to handle point A (current location) specially
+        if (index == 0 && _userLocation != null) {
+          final locationToRemove = _optimizedRoute![index];
+          // Only prevent removal if this is actually the user's location
+          if (locationToRemove.latitude == _userLocation!.latitude && 
+              locationToRemove.longitude == _userLocation!.longitude) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot remove your current location (Point A)'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+        }
+        
         final originalLocation = _optimizedRoute![index];
         _locations.remove(originalLocation);
         _optimizedRoute = null;
       } else {
+        // Don't allow removing the current location (point A) if it's at index 0
+        if (index == 0 && _userLocation != null) {
+          final locationToRemove = _locations[index];
+          // Only prevent removal if this is actually the user's location
+          if (locationToRemove.latitude == _userLocation!.latitude && 
+              locationToRemove.longitude == _userLocation!.longitude) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot remove your current location (Point A)'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+        }
+        
         _locations.removeAt(index);
+        
+        // Ensure user's location is still the first point if present in the list
+        if (_userLocation != null && _locations.isNotEmpty) {
+          // Find if user's location is in the list but not at position 0
+          final userLocationIndex = _locations.indexWhere(
+            (loc) => loc.latitude == _userLocation!.latitude && 
+                    loc.longitude == _userLocation!.longitude
+          );
+          
+          // If found elsewhere in the list, move it to position 0
+          if (userLocationIndex > 0) {
+            final userLocation = _locations.removeAt(userLocationIndex);
+            _locations.insert(0, userLocation);
+          }
+        }
       }
     });
   }
@@ -155,7 +204,22 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     });
 
     try {
-      final optimizedLocations = await _routeOptimizer.optimizeRoute(_locations);
+      // Ensure current location is always the starting point for route optimization
+      List<Location> routeLocations = List.from(_locations);
+      if (_userLocation != null) {
+        // Find the index of the user's current location
+        final currentLocationIndex = routeLocations.indexWhere(
+          (loc) => loc.latitude == _userLocation!.latitude && loc.longitude == _userLocation!.longitude
+        );
+        
+        // If found and not already at index 0, move it to the beginning
+        if (currentLocationIndex > 0) {
+          final currentLocation = routeLocations.removeAt(currentLocationIndex);
+          routeLocations.insert(0, currentLocation);
+        }
+      }
+      
+      final optimizedLocations = await _routeOptimizer.optimizeRoute(routeLocations);
 
       setState(() {
         _optimizedRoute = optimizedLocations;
@@ -203,8 +267,9 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     final List<Location> displayLocations = _optimizedRoute ?? _locations;
 
     return displayLocations.map((location) {
-      final bool isStart = displayLocations.indexOf(location) == 0;
-      final bool isEnd = displayLocations.indexOf(location) == displayLocations.length - 1;
+      final int index = displayLocations.indexOf(location);
+      final bool isStart = index == 0;
+      final bool isEnd = index == displayLocations.length - 1;
 
       Color markerColor;
       double markerSize;
@@ -218,6 +283,16 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
       } else {
         markerColor = Colors.blue;
         markerSize = 20.0;
+      }
+
+      // Use letters instead of numbers: A for start (current location), 
+      // then B, C, D for subsequent points
+      String markerLabel;
+      if (isStart) {
+        markerLabel = 'A';
+      } else {
+        // Convert index to corresponding letter (1->B, 2->C, etc.)
+        markerLabel = String.fromCharCode('B'.codeUnitAt(0) + index - 1);
       }
 
       return Marker(
@@ -234,7 +309,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
             ),
             child: Center(
               child: Text(
-                (displayLocations.indexOf(location) + 1).toString(),
+                markerLabel,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
@@ -488,6 +563,11 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                                     : (index == _optimizedRoute!.length - 1
                                         ? Colors.red
                                         : Colors.tealAccent);
+                                        
+                                // Convert index to letter: A for start, then B, C, D...
+                                String markerLabel = index == 0 
+                                    ? 'A' 
+                                    : String.fromCharCode('B'.codeUnitAt(0) + index - 1);
 
                                 return Container(
                                   margin: const EdgeInsets.symmetric(vertical: 4),
@@ -501,7 +581,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                                     leading: CircleAvatar(
                                       backgroundColor: itemColor,
                                       child: Text(
-                                        '${index + 1}',
+                                        markerLabel,
                                         style: const TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold),
@@ -547,16 +627,15 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                                       children: [
                                         const Icon(Icons.drag_handle,
                                             color: Colors.grey, size: 20),
-                                        const SizedBox(width: 4),
-                                        CircleAvatar(
-                                          backgroundColor: itemColor,
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: const TextStyle(
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
+                                        const SizedBox(width: 4),                                CircleAvatar(
+                                      backgroundColor: itemColor,
+                                      child: Text(
+                                        index == 0 ? 'A' : String.fromCharCode('B'.codeUnitAt(0) + index - 1),
+                                        style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
                                       ],
                                     ),
                                     title: Text(
