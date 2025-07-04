@@ -5,7 +5,7 @@ import 'package:wanderly_android/models/route_optimizer.dart';
 import 'package:wanderly_android/services/route_optimizer_service.dart';
 
 class RouteOptimizerPage extends StatefulWidget {
-  const RouteOptimizerPage({Key? key}) : super(key: key);
+  const RouteOptimizerPage({super.key});
 
   @override
   State<RouteOptimizerPage> createState() => _RouteOptimizerPageState();
@@ -135,7 +135,7 @@ class _RouteOptimizerPageState extends State<RouteOptimizerPage> {
           onTap: () => _showLocationInfo(location),
           child: Container(
             decoration: BoxDecoration(
-              color: markerColor.withOpacity(0.8),
+              color: markerColor.withAlpha((0.8 * 255).toInt()),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),
@@ -229,7 +229,7 @@ class _RouteOptimizerPageState extends State<RouteOptimizerPage> {
         padding: const EdgeInsets.all(8),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.teal.withOpacity(0.2),
+          color: Colors.teal.withAlpha((0.8 * 255).toInt()),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Row(
@@ -249,7 +249,7 @@ class _RouteOptimizerPageState extends State<RouteOptimizerPage> {
         padding: const EdgeInsets.all(8),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.amber.withOpacity(0.2),
+          color: Colors.amber.withAlpha((0.8 * 255).toInt()),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Row(
@@ -285,7 +285,7 @@ class _RouteOptimizerPageState extends State<RouteOptimizerPage> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E2A38),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: itemColor.withOpacity(0.5), width: 1),
+                      border: Border.all(color: itemColor.withAlpha((0.5 * 255).toInt()), width: 1),
                     ),
                     child: ListTile(
                       leading: CircleAvatar(
@@ -324,7 +324,7 @@ class _RouteOptimizerPageState extends State<RouteOptimizerPage> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E2A38),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: itemColor.withOpacity(0.5), width: 1),
+                      border: Border.all(color: itemColor.withAlpha((0.5 * 255).toInt()), width: 1),
                     ),
                     child: ListTile(
                       leading: Row(

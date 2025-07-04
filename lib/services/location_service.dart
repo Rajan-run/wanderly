@@ -191,6 +191,7 @@ class LocationService {
     }
 
     // Then check and request permission
+    
     final showRationale = await showPermissionRationaleDialog(context);
     if (!showRationale) {
       return null;

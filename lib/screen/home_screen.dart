@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:wanderly_android/screen/Maps.dart';
+import 'package:wanderly_android/screen/maps.dart';
 import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
 import 'package:wanderly_android/services/location_service.dart';
@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Loading overlay
           if (_isLoadingLocation)
             Container(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withAlpha((0.6 * 255).toInt()),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -334,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           CircleAvatar(
-            backgroundColor: color.withOpacity(0.2),
+            backgroundColor: color.withAlpha((0.2 * 255).toInt()),
             radius: 28,
             child: Icon(icon, color: color, size: 28),
           ),

@@ -6,7 +6,7 @@ void main() {
 }
 
 class RouteOptimizerApp extends StatelessWidget {
-  const RouteOptimizerApp({Key? key}) : super(key: key);
+  const RouteOptimizerApp({super.key});
 
   @override
   Widget build(BuildContext context) {

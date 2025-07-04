@@ -485,7 +485,7 @@ class _FoodCardState extends State<FoodCard> {
   Future<void> fetchImage() async {
     const apiKey = '51063287-f162e7a21f1002a62a82f67c3'; // <-- Replace with your Pixabay API key
     final url = Uri.parse(
-        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent(widget.searchTerm + " food")}&image_type=photo&per_page=3');
+        'https://pixabay.com/api/?key=$apiKey&q=${Uri.encodeComponent("${widget.searchTerm} food")}&image_type=photo&per_page=3');
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final data = json.decode(response.body);

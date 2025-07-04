@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:wanderly_android/screen/Maps.dart';
+import 'package:wanderly_android/screen/maps.dart';
 import 'package:wanderly_android/models/route_optimizer.dart';
 import 'package:wanderly_android/services/location_service.dart';
 
@@ -348,6 +348,7 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
         final coordinates = await _locationService.getCoordinatesFromPlaceName(item['name']);
         
         // Close any open snackbars
+        if (!mounted) return;
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         
         if (coordinates != null) {
@@ -428,9 +429,10 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
     }
 
     // Debug print the itinerary contents
-    print('Itinerary items before conversion: ${_itinerary.length}');
+    // print('Itinerary items before conversion: ${_itinerary.length}');
+    // ignore: unused_local_variable
     for (var item in _itinerary) {
-      print('Itinerary item: ${item['name']}, type: ${item['type']}, lat: ${item['latitude']}, lng: ${item['longitude']}');
+      // print('Itinerary item: ${item['name']}, type: ${item['type']}, lat: ${item['latitude']}, lng: ${item['longitude']}');
     }
 
     // Convert itinerary items to Location objects
@@ -443,23 +445,24 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
           try {
             double lat = double.parse(item['latitude']!);
             double lng = double.parse(item['longitude']!);
-            print('Converting to Location: ${item['name']}, lat: $lat, lng: $lng');
+            // print('Converting to Location: ${item['name']}, lat: $lat, lng: $lng');
             return Location(
               name: item['name']!,
               latitude: lat,
               longitude: lng,
             );
           } catch (e) {
-            print('Error converting location: $e');
+            // print('Error converting location: $e');
             return null;
           }
         })
         .whereType<Location>() // Filter out nulls
         .toList();
 
-    print('Created ${landmarkLocations.length} Location objects');
+    // print('Created ${landmarkLocations.length} Location objects');
+    // ignore: unused_local_variable
     for (var loc in landmarkLocations) {
-      print('Location: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+      // print('Location: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
     }
 
     if (landmarkLocations.isEmpty) {

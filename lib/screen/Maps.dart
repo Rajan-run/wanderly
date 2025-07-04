@@ -32,8 +32,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   LatLng? _userLocation;
   bool _isLoading = true;
   bool _locationFound = false;
-  String _locationAddress = "Getting address...";
-  List<Location> _locations = [];
+  final List<Location> _locations = [];
   List<Location>? _optimizedRoute;
   String _errorMessage = '';
   bool _isLoadingRoute = false;
@@ -45,21 +44,21 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     
     // Add any landmark locations passed to the map
     if (widget.landmarkLocations != null && widget.landmarkLocations!.isNotEmpty) {
-      print('ExploreNearbyScreen received ${widget.landmarkLocations!.length} landmarks');
-      for (var loc in widget.landmarkLocations!) {
-        print('Received landmark: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
-      }
+      // print('ExploreNearbyScreen received ${widget.landmarkLocations!.length} landmarks');
+      // for (var loc in widget.landmarkLocations!) {
+      //   print('Received landmark: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+      // }
       
       setState(() {
         // Add landmarks to the locations list
         _locations.addAll(widget.landmarkLocations!);
-        print('After adding landmarks, _locations has ${_locations.length} locations');
+        // print('After adding landmarks, _locations has ${_locations.length} locations');
       });
       
       // Flag to optimize route after getting current location
       _hasLandmarks = true;
     } else {
-      print('ExploreNearbyScreen: No landmarks received');
+      // print('ExploreNearbyScreen: No landmarks received');
     }
     
     // Get the current location
@@ -89,7 +88,6 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoading = true;
-      _locationAddress = "Getting your location...";
     });
 
     final position = await _locationService.getCurrentLocation(context);
@@ -107,7 +105,6 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
         _userLocation = newLocation;
         _locationFound = true;
         _isLoading = false;
-        _locationAddress = address;
         
         // Create the current location object
         final currentLoc = Location(
@@ -117,13 +114,15 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
         );
         
         // Before modifying locations, print the current state
-        print('Before modification, _locations has ${_locations.length} items');
+        // print('Before modification, _locations has ${_locations.length} items');
+        // ignore: unused_local_variable
         for (var loc in _locations) {
-          print('Location before: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+          // print('Location before: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
         }
         
         // Only remove locations with the exact name 'Current Location' or exact same coordinates
         // but not landmarks with different names and coordinates
+        // ignore: unused_local_variable
         int removed = 0;
         _locations.removeWhere((loc) {
           bool shouldRemove = 
@@ -133,15 +132,16 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
           return shouldRemove;
         });
         
-        print('Removed $removed locations that matched current location');
+        // print('Removed $removed locations that matched current location');
         
         // Insert current location as the first point (point A)
         _locations.insert(0, currentLoc);
         
         // After modifying, print the state again
-        print('After modification, _locations has ${_locations.length} items');
+        // print('After modification, _locations has ${_locations.length} items');
+        // ignore: unused_local_variable
         for (var loc in _locations) {
-          print('Location after: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+          // print('Location after: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
         }
         
         // Reset optimized route since locations changed
@@ -159,7 +159,6 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _locationAddress = "Unable to get location";
       });
     }
   }
@@ -327,9 +326,10 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   // Map markers for all locations
   List<Marker> _buildMarkers() {
     final List<Location> displayLocations = _optimizedRoute ?? _locations;
-    print('Building markers for ${displayLocations.length} locations');
+    // print('Building markers for ${displayLocations.length} locations');
+    // ignore: unused_local_variable
     for (var loc in displayLocations) {
-      print('Creating marker for: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+      // print('Creating marker for: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
     }
 
     return displayLocations.map((location) {
@@ -369,7 +369,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
           onTap: () => _showLocationInfo(location),
           child: Container(
             decoration: BoxDecoration(
-              color: markerColor.withOpacity(0.8),
+              color: markerColor.withAlpha((0.8 * 255).toInt()),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),
@@ -419,6 +419,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not open Maps app.'),
@@ -461,9 +462,9 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                       _onMapTap(point);
                     },
                     onMapReady: () {
-                      print('Map is ready, locationFound: $_locationFound');
-                      print('Center: $_center');
-                      print('Markers count: ${_buildMarkers().length}');
+                      // print('Map is ready, locationFound: $_locationFound');
+                      // print('Center: $_center');
+                      // print('Markers count: ${_buildMarkers().length}');
                       if (_locationFound) {
                         _mapController.move(_center, 14.0);
                       }
@@ -486,7 +487,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                 ),
                 if (_isLoading)
                   Container(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withAlpha((0.6 * 255).toInt()),
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -644,7 +645,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                                     color: const Color(0xFF1E2A38),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: itemColor.withOpacity(0.5), width: 1),
+                                        color: itemColor.withAlpha((0.5 * 255).toInt()), width: 1),
                                   ),
                                   child: ListTile(
                                     leading: CircleAvatar(
@@ -688,7 +689,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                                     color: const Color(0xFF1E2A38),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: itemColor.withOpacity(0.5), width: 1),
+                                        color: itemColor.withAlpha((0.5 * 255).toInt()), width: 1),
                                   ),
                                   child: ListTile(
                                     leading: Row(
@@ -753,7 +754,7 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
 
   Widget _circleButton(IconData icon, VoidCallback onTap) {
     return Material(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withAlpha((0.3 * 255).toInt()),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
