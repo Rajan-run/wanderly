@@ -45,13 +45,21 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
     
     // Add any landmark locations passed to the map
     if (widget.landmarkLocations != null && widget.landmarkLocations!.isNotEmpty) {
+      print('ExploreNearbyScreen received ${widget.landmarkLocations!.length} landmarks');
+      for (var loc in widget.landmarkLocations!) {
+        print('Received landmark: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+      }
+      
       setState(() {
         // Add landmarks to the locations list
         _locations.addAll(widget.landmarkLocations!);
+        print('After adding landmarks, _locations has ${_locations.length} locations');
       });
       
       // Flag to optimize route after getting current location
       _hasLandmarks = true;
+    } else {
+      print('ExploreNearbyScreen: No landmarks received');
     }
     
     // Get the current location
@@ -108,14 +116,33 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
           longitude: position.longitude,
         );
         
-        // Remove any existing user location if it exists
-        _locations.removeWhere((loc) => 
-          loc.name == 'Current Location' || 
-          (loc.latitude == currentLoc.latitude && loc.longitude == currentLoc.longitude)
-        );
+        // Before modifying locations, print the current state
+        print('Before modification, _locations has ${_locations.length} items');
+        for (var loc in _locations) {
+          print('Location before: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+        }
+        
+        // Only remove locations with the exact name 'Current Location' or exact same coordinates
+        // but not landmarks with different names and coordinates
+        int removed = 0;
+        _locations.removeWhere((loc) {
+          bool shouldRemove = 
+              loc.name == 'Current Location' || 
+              (loc.latitude == currentLoc.latitude && loc.longitude == currentLoc.longitude);
+          if (shouldRemove) removed++;
+          return shouldRemove;
+        });
+        
+        print('Removed $removed locations that matched current location');
         
         // Insert current location as the first point (point A)
         _locations.insert(0, currentLoc);
+        
+        // After modifying, print the state again
+        print('After modification, _locations has ${_locations.length} items');
+        for (var loc in _locations) {
+          print('Location after: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+        }
         
         // Reset optimized route since locations changed
         _optimizedRoute = null;
@@ -300,6 +327,10 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
   // Map markers for all locations
   List<Marker> _buildMarkers() {
     final List<Location> displayLocations = _optimizedRoute ?? _locations;
+    print('Building markers for ${displayLocations.length} locations');
+    for (var loc in displayLocations) {
+      print('Creating marker for: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+    }
 
     return displayLocations.map((location) {
       final int index = displayLocations.indexOf(location);
@@ -430,6 +461,9 @@ class _ExploreNearbyScreenState extends State<ExploreNearbyScreen> {
                       _onMapTap(point);
                     },
                     onMapReady: () {
+                      print('Map is ready, locationFound: $_locationFound');
+                      print('Center: $_center');
+                      print('Markers count: ${_buildMarkers().length}');
                       if (_locationFound) {
                         _mapController.move(_center, 14.0);
                       }

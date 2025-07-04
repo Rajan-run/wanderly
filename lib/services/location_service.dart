@@ -287,4 +287,40 @@ class LocationService {
     _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings);
     return _positionStream!;
   }
+
+  // Get coordinates from place name using forward geocoding
+  Future<Map<String, double>?> getCoordinatesFromPlaceName(String placeName) async {
+    try {
+      // Append Jaipur to improve accuracy for local landmarks
+      String searchQuery = "$placeName, Jaipur, Rajasthan, India";
+      debugPrint('Searching for coordinates of: $searchQuery');
+      
+      List<Location> locations = await locationFromAddress(searchQuery);
+      if (locations.isNotEmpty) {
+        debugPrint('Found coordinates: ${locations[0].latitude}, ${locations[0].longitude}');
+        return {
+          'latitude': locations[0].latitude,
+          'longitude': locations[0].longitude,
+        };
+      }
+      
+      // If not found with Jaipur, try just the place name
+      if (placeName.toLowerCase().contains('jaipur')) {
+        locations = await locationFromAddress(placeName);
+        if (locations.isNotEmpty) {
+          debugPrint('Found coordinates using place name only: ${locations[0].latitude}, ${locations[0].longitude}');
+          return {
+            'latitude': locations[0].latitude,
+            'longitude': locations[0].longitude,
+          };
+        }
+      }
+      
+      debugPrint('No coordinates found for $placeName');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting coordinates: $e');
+      return null;
+    }
+  }
 }

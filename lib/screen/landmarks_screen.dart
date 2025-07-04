@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:wanderly_android/screen/Maps.dart';
 import 'package:wanderly_android/models/route_optimizer.dart';
+import 'package:wanderly_android/services/location_service.dart';
 
 class LandmarksScreen extends StatefulWidget {
   final List<Map<String, String>>? itinerary;
@@ -20,6 +21,7 @@ class LandmarksScreen extends StatefulWidget {
 
 class _LandmarksScreenState extends State<LandmarksScreen> {
   late List<Map<String, String>> _itinerary;
+  final LocationService _locationService = LocationService();
 
   final List<Map<String, dynamic>> _landmarks = [
     {
@@ -316,8 +318,65 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
         : [];
   }
 
-  void _addToItinerary(Map<String, dynamic> item) {
+  Future<void> _addToItinerary(Map<String, dynamic> item) async {
     if (!_itinerary.any((i) => i['name'] == item['name'] && i['type'] == item['type'])) {
+      // If latitude and longitude are missing, try to fetch them
+      if (item['latitude'] == null || item['longitude'] == null) {
+        // Show a loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  height: 20, 
+                  width: 20, 
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text('Finding coordinates for ${item['name']}...'),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 10),
+          ),
+        );
+
+        // Try to fetch coordinates using the landmark name
+        final coordinates = await _locationService.getCoordinatesFromPlaceName(item['name']);
+        
+        // Close any open snackbars
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        if (coordinates != null) {
+          // Update the item with the fetched coordinates
+          item['latitude'] = coordinates['latitude'];
+          item['longitude'] = coordinates['longitude'];
+          
+          // Also update the landmark in the _landmarks list for future reference
+          for (var i = 0; i < _landmarks.length; i++) {
+            if (_landmarks[i]['name'] == item['name']) {
+              setState(() {
+                _landmarks[i]['latitude'] = coordinates['latitude'];
+                _landmarks[i]['longitude'] = coordinates['longitude'];
+              });
+              break;
+            }
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not find location for ${item['name']}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+      }
+
       setState(() {
         // Add the item to the itinerary with all the necessary data
         _itinerary.add({
@@ -368,17 +427,40 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
       return;
     }
 
+    // Debug print the itinerary contents
+    print('Itinerary items before conversion: ${_itinerary.length}');
+    for (var item in _itinerary) {
+      print('Itinerary item: ${item['name']}, type: ${item['type']}, lat: ${item['latitude']}, lng: ${item['longitude']}');
+    }
+
     // Convert itinerary items to Location objects
     final List<Location> landmarkLocations = _itinerary
-        .where((item) => item['type'] == 'Landmark' && 
-                         item['latitude'] != null && 
-                         item['longitude'] != null)
-        .map((item) => Location(
+        .where((item) => 
+            item['type'] == 'Landmark' && 
+            item['latitude'] != null && 
+            item['longitude'] != null)
+        .map((item) {
+          try {
+            double lat = double.parse(item['latitude']!);
+            double lng = double.parse(item['longitude']!);
+            print('Converting to Location: ${item['name']}, lat: $lat, lng: $lng');
+            return Location(
               name: item['name']!,
-              latitude: double.parse(item['latitude']!),
-              longitude: double.parse(item['longitude']!),
-            ))
+              latitude: lat,
+              longitude: lng,
+            );
+          } catch (e) {
+            print('Error converting location: $e');
+            return null;
+          }
+        })
+        .whereType<Location>() // Filter out nulls
         .toList();
+
+    print('Created ${landmarkLocations.length} Location objects');
+    for (var loc in landmarkLocations) {
+      print('Location: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+    }
 
     if (landmarkLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
