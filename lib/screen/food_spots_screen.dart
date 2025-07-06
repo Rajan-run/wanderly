@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:wanderly_android/screen/Maps.dart';
+import 'package:wanderly_android/models/route_optimizer.dart';
+import 'package:wanderly_android/services/location_service.dart';
 
 class FoodSpotsScreen extends StatefulWidget {
   final List<Map<String, String>>? itinerary;
@@ -18,14 +21,17 @@ class FoodSpotsScreen extends StatefulWidget {
 
 class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
   late List<Map<String, String>> _itinerary;
+  final LocationService _locationService = LocationService();
 
-  final List<Map<String, String>> _foodSpots = [
+  final List<Map<String, dynamic>> _foodSpots = [
   {
     'name': 'Rawat Mishthan Bhandar',
     'distance': '1.0 mi',
     'rating': '4.6',
     'description': 'Famous for Pyaaz Kachori and Mirchi Vada.',
     'searchTerm': 'kachori',
+    'latitude': 26.9124, 
+    'longitude': 75.7873,
   },
   {
     'name': 'Laxmi Mishthan Bhandar (LMB)',
@@ -33,6 +39,8 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
     'rating': '4.7',
     'description': 'Iconic spot for Rajasthani sweets and thali.',
     'searchTerm': 'ghewar',
+    'latitude': 26.9229, 
+    'longitude': 75.8267,
   },
   {
     'name': '1135 AD',
@@ -40,6 +48,8 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
     'rating': '4.8',
     'description': 'Royal dining at Amber Fort with heritage ambiance.',
     'searchTerm': 'laal maas',
+    'latitude': 26.9855, 
+    'longitude': 75.8513,
   },
   {
     'name': 'Masala Chowk',
@@ -310,12 +320,86 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
         : [];
   }
 
-  void _addToItinerary(Map<String, String> item) {
+  Future<void> _addToItinerary(Map<String, String> item) async {
     if (!_itinerary.any((i) => i['name'] == item['name'] && i['type'] == item['type'])) {
+      // Check if the item has latitude and longitude
+      if (item['latitude'] == null || item['longitude'] == null) {
+        // Show a loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  height: 20, 
+                  width: 20, 
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text('Finding coordinates for ${item['name']}...'),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 10),
+          ),
+        );
+
+        // Try to fetch coordinates using the food spot name
+        final coordinates = await _locationService.getCoordinatesFromPlaceName(item['name'] ?? '');
+        
+        // Close any open snackbars
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        if (coordinates != null) {
+          // Update the item with the fetched coordinates
+          item = Map<String, String>.from(item);
+          item['latitude'] = coordinates['latitude'].toString();
+          item['longitude'] = coordinates['longitude'].toString();
+          
+          // Also update the food spot in the _foodSpots list for future reference
+          for (var i = 0; i < _foodSpots.length; i++) {
+            if (_foodSpots[i]['name'] == item['name']) {
+              setState(() {
+                _foodSpots[i] = Map<String, dynamic>.from(_foodSpots[i]);
+                _foodSpots[i]['latitude'] = coordinates['latitude'];
+                _foodSpots[i]['longitude'] = coordinates['longitude'];
+              });
+              break;
+            }
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not find location for ${item['name']}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+      }
+
       setState(() {
+        // Add the item to the itinerary with all the necessary data
         _itinerary.add(item);
       });
       widget.onItineraryChanged?.call(_itinerary);
+      
+      // Show a confirmation message with VIEW ON MAP action
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item['name']} added to your itinerary'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'VIEW ON MAP',
+            textColor: Colors.white,
+            onPressed: () => _navigateToMapWithItinerary(),
+          ),
+        ),
+      );
     }
   }
 
@@ -330,6 +414,76 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
     return _itinerary.any((i) => i['name'] == name && i['type'] == 'Food');
   }
 
+  void _navigateToMapWithItinerary() {
+    if (_itinerary.isEmpty) {
+      // Show a message if no food spots are added
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add food spots to your itinerary first'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Debug print the itinerary contents
+    print('Itinerary items before conversion: ${_itinerary.length}');
+    for (var item in _itinerary) {
+      print('Itinerary item: ${item['name']}, type: ${item['type']}, lat: ${item['latitude']}, lng: ${item['longitude']}');
+    }
+
+    // Convert itinerary items to Location objects
+    final List<Location> foodSpotLocations = _itinerary
+        .where((item) => 
+            item['type'] == 'Food' && 
+            item['latitude'] != null && 
+            item['longitude'] != null)
+        .map((item) {
+          try {
+            double lat = double.parse(item['latitude']!);
+            double lng = double.parse(item['longitude']!);
+            print('Converting to Location: ${item['name']}, lat: $lat, lng: $lng');
+            return Location(
+              name: item['name']!,
+              latitude: lat,
+              longitude: lng,
+            );
+          } catch (e) {
+            print('Error converting location: $e');
+            return null;
+          }
+        })
+        .whereType<Location>() // Filter out nulls
+        .toList();
+
+    print('Created ${foodSpotLocations.length} Location objects');
+    for (var loc in foodSpotLocations) {
+      print('Location: ${loc.name}, (${loc.latitude}, ${loc.longitude})');
+    }
+
+    if (foodSpotLocations.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No valid food spot locations found'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to the map screen with all food spots
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExploreNearbyScreen(
+          landmarkLocations: foodSpotLocations,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = const Color(0xFF18222D);
@@ -340,7 +494,7 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
         backgroundColor: Colors.orange.shade300,
         elevation: 0,
         title: const Text(
-          'Wonderly',
+          'Wanderly',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -388,14 +542,41 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
                       description: food['description']!,
                       cardColor: const Color(0xFF232F3E),
                       isAdded: isAdded,
-                      onAdd: () => _addToItinerary({
-                        'name': food['name']!,
-                        'type': 'Food',
-                      }),
-                      onRemove: () => _removeFromItinerary({
-                        'name': food['name']!,
-                        'type': 'Food',
-                      }),
+                      onAdd: () {
+                        // Create the base food item
+                        final Map<String, String> foodItem = {
+                          'name': food['name']!,
+                          'type': 'Food',
+                        };
+                        
+                        // Add coordinates if they exist - convert doubles to strings
+                        if (food.containsKey('latitude') && food['latitude'] != null) {
+                          foodItem['latitude'] = food['latitude']!.toString();
+                        }
+                        if (food.containsKey('longitude') && food['longitude'] != null) {
+                          foodItem['longitude'] = food['longitude']!.toString();
+                        }
+                        
+                        // Call the async function without returning
+                        _addToItinerary(foodItem);
+                      },
+                      onRemove: () {
+                        // Create the food item to remove
+                        final Map<String, String> foodItem = {
+                          'name': food['name']!,
+                          'type': 'Food',
+                        };
+                        
+                        // Add coordinates if they exist - convert doubles to strings
+                        if (food.containsKey('latitude') && food['latitude'] != null) {
+                          foodItem['latitude'] = food['latitude']!.toString();
+                        }
+                        if (food.containsKey('longitude') && food['longitude'] != null) {
+                          foodItem['longitude'] = food['longitude']!.toString();
+                        }
+                        
+                        _removeFromItinerary(foodItem);
+                      },
                     );
                   }).toList(),
                 ),
@@ -421,15 +602,19 @@ class _FoodSpotsScreenState extends State<FoodSpotsScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.location_on, color: Colors.cyan),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to the map with all food spots currently in the itinerary
+              _navigateToMapWithItinerary();
+            },
           ),
           IconButton(
-            icon: const Icon(Icons.grid_view, color: Colors.white70),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            onPressed: () {},
+            icon: const Icon(Icons.home, color: Colors.white70),
+            onPressed: () {
+              // Return to home screen but make sure to pass updated itinerary back
+              Navigator.pop(context);
+              // The onItineraryChanged callback will ensure data is passed back
+              widget.onItineraryChanged?.call(_itinerary);
+            },
           ),
           FloatingActionButton(
             backgroundColor: Colors.orange,
