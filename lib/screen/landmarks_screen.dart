@@ -498,7 +498,7 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
         backgroundColor: Colors.cyan.shade300,
         elevation: 0,
         title: const Text(
-          'Wonderly',
+          'Wanderly',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -588,12 +588,71 @@ class _LandmarksScreenState extends State<LandmarksScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.grid_view, color: Colors.white70),
-            onPressed: () {},
+            icon: const Icon(Icons.home, color: Colors.white70),
+            onPressed: () {
+              // Return to home screen but make sure to pass updated itinerary back
+              Navigator.pop(context);
+              // The onItineraryChanged callback will ensure data is passed back
+              widget.onItineraryChanged?.call(_itinerary);
+            },
           ),
           IconButton(
-            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            onPressed: () {},
+            icon: const Icon(Icons.clear_all, color: Colors.redAccent),
+            onPressed: () {
+              // Show confirmation dialog before clearing
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    backgroundColor: const Color(0xFF232F3E),
+                    title: const Text(
+                      'Clear Itinerary',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    content: const Text(
+                      'Are you sure you want to clear all items from your itinerary?',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close dialog
+                        },
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.cyan),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Clear the itinerary
+                          setState(() {
+                            _itinerary.clear();
+                          });
+                          
+                          // Notify parent of the change
+                          widget.onItineraryChanged?.call(_itinerary);
+                          
+                          // Close dialog and show confirmation
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Itinerary cleared'),
+                              backgroundColor: Colors.redAccent,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Clear All',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
           FloatingActionButton(
             backgroundColor: Colors.cyan,

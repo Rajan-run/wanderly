@@ -6,6 +6,7 @@ import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
 import 'package:wanderly_android/services/location_service.dart';
 import 'package:wanderly_android/pages/route_optimizer_page.dart';
+import 'package:wanderly_android/models/route_optimizer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,6 +55,116 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _itinerary.remove(item);
     });
+  }
+
+  void _viewItineraryOnMap() {
+    if (_itinerary.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add places to your itinerary first'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Convert itinerary items to Location objects for the map
+    final List<Location> locationsList = _itinerary
+        .where((item) => 
+            item['latitude'] != null && 
+            item['longitude'] != null)
+        .map((item) {
+          try {
+            double lat = double.parse(item['latitude']!);
+            double lng = double.parse(item['longitude']!);
+            print('Converting to Location: ${item['name']}, lat: $lat, lng: $lng');
+            return Location(
+              name: item['name']!,
+              latitude: lat,
+              longitude: lng,
+            );
+          } catch (e) {
+            print('Error parsing coordinates: $e');
+            return null;
+          }
+        })
+        .whereType<Location>() // Filter out nulls
+        .toList();
+
+    if (locationsList.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No valid locations found in your itinerary'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to the map screen with the itinerary locations
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExploreNearbyScreen(
+          landmarkLocations: locationsList,
+        ),
+      ),
+    );
+  }
+
+  void _clearItinerary() {
+    // Show confirmation dialog before clearing
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF232F3E),
+          title: const Text(
+            'Clear Itinerary',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            'Are you sure you want to clear all items from your itinerary?',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.cyan),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Clear the itinerary
+                setState(() {
+                  _itinerary.clear();
+                });
+                
+                // Close dialog and show confirmation
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Itinerary cleared'),
+                    backgroundColor: Colors.redAccent,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: const Text(
+                'Clear All',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -207,9 +318,34 @@ class _HomeScreenState extends State<HomeScreen> {
                       _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
                       _categoryIcon(Icons.event, 'Events', Colors.indigo),
                       _categoryIcon(Icons.map, 'View Map', Colors.cyan, onTap: () {
+                        // Convert itinerary items to Location objects for the map
+                        final List<Location> locationsList = _itinerary
+                            .where((item) => 
+                                item['latitude'] != null && 
+                                item['longitude'] != null)
+                            .map((item) {
+                              try {
+                                double lat = double.parse(item['latitude']!);
+                                double lng = double.parse(item['longitude']!);
+                                return Location(
+                                  name: item['name']!,
+                                  latitude: lat,
+                                  longitude: lng,
+                                );
+                              } catch (e) {
+                                // Skip items with invalid coordinates
+                                print('Error parsing coordinates: $e');
+                                return null;
+                              }
+                            })
+                            .whereType<Location>() // Filter out nulls
+                            .toList();
+
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const ExploreNearbyScreen()),
+                          MaterialPageRoute(builder: (context) => ExploreNearbyScreen(
+                            landmarkLocations: locationsList,
+                          )),
                         );
                       }),
                       _categoryIcon(Icons.route, 'Optimize Route', Colors.green, onTap: () {
@@ -223,13 +359,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height: 30),
 
                   // Itinerary Section
-                  const Text(
-                    'Itinerary',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Itinerary',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (_itinerary.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _clearItinerary,
+                              icon: const Icon(Icons.clear_all, size: 16),
+                              label: const Text('Clear All'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                                textStyle: const TextStyle(fontSize: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: _viewItineraryOnMap,
+                              icon: const Icon(Icons.map, size: 16),
+                              label: const Text('View on Map'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.cyan,
+                                foregroundColor: Colors.white,
+                                textStyle: const TextStyle(fontSize: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 12),
 
