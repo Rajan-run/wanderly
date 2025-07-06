@@ -85,31 +85,50 @@ class LocationService {
         Placemark place = placemarks[0];
         debugPrint('Placemark: $place');
         
-        // Build address string with locality (area name) and postal code
-        String address = '';
+        // Build a more detailed address string
+        List<String> addressParts = [];
         
+        // Start with the most specific location (thoroughfare/street or name)
+        if (place.name != null && place.name!.isNotEmpty && place.name != place.street) {
+          addressParts.add(place.name!);
+        }
+        
+        // Add street/thoroughfare if available
+        if (place.thoroughfare != null && place.thoroughfare!.isNotEmpty) {
+          addressParts.add(place.thoroughfare!);
+        } else if (place.street != null && place.street!.isNotEmpty) {
+          addressParts.add(place.street!);
+        }
+        
+        // Add sublocality or area
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          addressParts.add(place.subLocality!);
+        }
+        
+        // Add locality/city
         if (place.locality != null && place.locality!.isNotEmpty) {
-          address += place.locality!;
-        } else if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-          address += place.subLocality!;
+          addressParts.add(place.locality!);
         }
         
-        if (place.postalCode != null && place.postalCode!.isNotEmpty) {
-          if (address.isNotEmpty) {
-            address += ', ';
+        // Create the address string from parts, avoiding duplicates
+        String address = '';
+        Set<String> uniqueParts = {};
+        
+        for (String part in addressParts) {
+          if (uniqueParts.add(part)) {
+            if (address.isNotEmpty) address += ', ';
+            address += part;
           }
-          address += 'PIN: ${place.postalCode}';
         }
         
-        // If we still don't have enough info, add more details
-        if (address.isEmpty) {
+        // If we still don't have enough info, add administrative area
+        if (address.isEmpty || addressParts.length < 2) {
           if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
-            address += place.subAdministrativeArea!;
-            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
-              address += ', ${place.administrativeArea}';
+            String part = place.subAdministrativeArea!;
+            if (uniqueParts.add(part)) {
+              if (address.isNotEmpty) address += ', ';
+              address += part;
             }
-          } else if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
-            address += place.administrativeArea!;
           }
         }
         
@@ -172,6 +191,7 @@ class LocationService {
     }
 
     // Then check and request permission
+    
     final showRationale = await showPermissionRationaleDialog(context);
     if (!showRationale) {
       return null;
@@ -267,5 +287,41 @@ class LocationService {
     
     _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings);
     return _positionStream!;
+  }
+
+  // Get coordinates from place name using forward geocoding
+  Future<Map<String, double>?> getCoordinatesFromPlaceName(String placeName) async {
+    try {
+      // Append Jaipur to improve accuracy for local landmarks
+      String searchQuery = "$placeName, Jaipur, Rajasthan, India";
+      debugPrint('Searching for coordinates of: $searchQuery');
+      
+      List<Location> locations = await locationFromAddress(searchQuery);
+      if (locations.isNotEmpty) {
+        debugPrint('Found coordinates: ${locations[0].latitude}, ${locations[0].longitude}');
+        return {
+          'latitude': locations[0].latitude,
+          'longitude': locations[0].longitude,
+        };
+      }
+      
+      // If not found with Jaipur, try just the place name
+      if (placeName.toLowerCase().contains('jaipur')) {
+        locations = await locationFromAddress(placeName);
+        if (locations.isNotEmpty) {
+          debugPrint('Found coordinates using place name only: ${locations[0].latitude}, ${locations[0].longitude}');
+          return {
+            'latitude': locations[0].latitude,
+            'longitude': locations[0].longitude,
+          };
+        }
+      }
+      
+      debugPrint('No coordinates found for $placeName');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting coordinates: $e');
+      return null;
+    }
   }
 }
