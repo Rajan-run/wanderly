@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:wanderly_android/screen/maps.dart';
 import 'package:wanderly_android/screen/food_spots_screen.dart';
 import 'package:wanderly_android/screen/landmarks_screen.dart';
+import 'package:wanderly_android/screen/religious_places_screen.dart';
 import 'package:wanderly_android/services/location_service.dart';
 import 'package:wanderly_android/pages/route_optimizer_page.dart';
 import 'package:wanderly_android/models/route_optimizer.dart';
@@ -316,7 +317,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }),
                       _categoryIcon(Icons.surfing, 'Activities', Colors.purple),
-                      _categoryIcon(Icons.event, 'Events', Colors.indigo),
+                      // _categoryIcon(Icons.event, 'Events', Colors.indigo),
+                      _categoryIcon(Icons.temple_hindu, 'Religious', Colors.deepPurple, onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReligiousPlacesScreen(
+                              itinerary: _itinerary,
+                              onItineraryChanged: (updatedList) {
+                                setState(() {
+                                  _itinerary.clear();
+                                  _itinerary.addAll(updatedList);
+                                });
+                              },
+                            ),
+                          ),
+                        );
+                      }),
                       _categoryIcon(Icons.map, 'View Map', Colors.cyan, onTap: () {
                         // Convert itinerary items to Location objects for the map
                         final List<Location> locationsList = _itinerary
